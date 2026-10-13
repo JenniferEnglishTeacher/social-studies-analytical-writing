@@ -19,6 +19,14 @@
 
   const escapeHtml = value => String(value).replace(/[&<>"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[char]));
   const tokens = value => (String(value).match(/[A-Za-z0-9]+(?:['’\-][A-Za-z0-9]+)*/g) || []).map(token => token.toLowerCase().replace(/’/g, "'"));
+  const normalizeWord = value => (tokens(value)[0] || "");
+  const tokenMatches = value => {
+    const matches = [];
+    const pattern = /[A-Za-z0-9]+(?:['’\-][A-Za-z0-9]+)*/g;
+    let match;
+    while ((match = pattern.exec(String(value)))) matches.push({ raw: match[0], normalized: normalizeWord(match[0]), start: match.index, end: pattern.lastIndex });
+    return matches;
+  };
   const similarity = (expected, actual) => {
     const a = tokens(expected), b = tokens(actual);
     const dp = Array.from({length:a.length + 1}, (_, i) => Array(b.length + 1).fill(0).map((_, j) => i || j));
@@ -39,7 +47,30 @@
     utterance.rate = .82;
     speechSynthesis.speak(utterance);
   };
-  const wordHints = text => tokens(text).map(word => `<span class="word-hint" aria-label="word beginning with ${word[0]}">${escapeHtml(word[0].toUpperCase() + "_".repeat(Math.max(1, word.length - 1)))}</span>`).join("");
+  const clozeSentence = item => {
+    const requested = new Map();
+    (item.blankWords || []).forEach(word => {
+      const normalized = normalizeWord(word);
+      requested.set(normalized, (requested.get(normalized) || 0) + 1);
+    });
+    const matches = tokenMatches(item.prompt);
+    let cursor = 0;
+    let blankNumber = 0;
+    let html = "";
+    matches.forEach(match => {
+      html += escapeHtml(item.prompt.slice(cursor, match.start));
+      const remaining = requested.get(match.normalized) || 0;
+      if (remaining > 0) {
+        requested.set(match.normalized, remaining - 1);
+        blankNumber += 1;
+        const first = match.raw[0].toUpperCase();
+        html += `<label class="cloze-blank"><span class="sr-only">Blank ${blankNumber}, ${match.raw.length} letters, begins with ${escapeHtml(first)}</span><input class="blank-input" data-answer="${escapeHtml(match.normalized)}" aria-label="Blank ${blankNumber}: ${match.raw.length} letters, begins with ${escapeHtml(first)}" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="${match.raw.length + 3}" placeholder="${escapeHtml(first)}…" style="--letters:${Math.max(4, Math.min(match.raw.length, 14))}"></label>`;
+      } else html += escapeHtml(match.raw);
+      cursor = match.end;
+    });
+    html += escapeHtml(item.prompt.slice(cursor));
+    return { html, count: blankNumber };
+  };
 
   function render() {
     stopRecognition();
@@ -47,52 +78,64 @@
     state.typingCaptured = state.typingScores[state.index] !== undefined;
     state.speakingBest = state.speakingScores[state.index] || 0;
     const wordCount = tokens(item.prompt).length;
+    const cloze = clozeSentence(item);
     const currentSection = item.essaySection || unit.section;
     const sectionSentence = item.sectionSentence || state.index + 1;
     const sectionCount = item.sectionCount || unit.items.length;
     const nextItem = unit.items[state.index + 1];
     const nextLabel = state.index === unit.items.length - 1 ? "Finish essay" : nextItem?.essaySection && nextItem.essaySection !== currentSection ? `Next section: ${nextItem.essaySection} →` : "Next sentence →";
     app.className = "quiz-shell";
-    app.innerHTML = `<header class="quiz-header"><div><a class="back" href="dashboard.html">← Dashboard</a><p class="eyebrow">${escapeHtml(unit.section)} · ${unit.code}</p><h1>${escapeHtml(unit.title)}</h1><div class="quiz-meta">${unit.kind === "essay" ? "Listen, type every word, then read the completed sentence aloud." : "Listen, type every word, then read the completed phrase aloud."}</div></div><div class="student-bar"><label for="studentName">Name</label><input id="studentName" autocomplete="name" value="${escapeHtml(localStorage.getItem("ssaw-student-name") || "")}" placeholder="Required"></div></header>
-      <section class="progress-panel"><div class="progress-row"><span>${escapeHtml(currentSection)} · Sentence ${sectionSentence} of ${sectionCount}</span><span>Essay ${state.index + 1}/${unit.items.length}</span></div><div class="progress-track"><span style="width:${(state.index / unit.items.length) * 100}%"></span></div><div class="stepper"><div id="dictationStep" class="step active">1 · Listen & dictate</div><div id="speakingStep" class="step">2 · Read aloud ≥ ${config.minimumSpeakingScore || 60}%</div></div></section>
+    app.innerHTML = `<header class="quiz-header"><div><a class="back" href="dashboard.html">← Dashboard</a><p class="eyebrow">${escapeHtml(unit.section)} · ${unit.code}</p><h1>${escapeHtml(unit.title)}</h1><div class="quiz-meta">Listen and complete the selected theme words, then read the full sentence aloud.</div></div><div class="student-bar"><label for="studentName">Student name</label><input id="studentName" autocomplete="name" value="${escapeHtml(localStorage.getItem("ssaw-student-name") || "")}" placeholder="Required for results"></div></header>
+      <section class="progress-panel"><div class="progress-row"><span>${escapeHtml(currentSection)} · Sentence ${sectionSentence} of ${sectionCount}</span><span>Essay ${state.index + 1}/${unit.items.length}</span></div><div class="progress-track"><span style="width:${(state.index / unit.items.length) * 100}%"></span></div><div class="stepper"><div id="dictationStep" class="step active">1 · Listen & fill the focus words</div><div id="speakingStep" class="step">2 · Read aloud ≥ ${config.minimumSpeakingScore || 60}%</div></div></section>
       <article class="prompt-card">
         <div class="hint-grid"><div class="hint"><small>${unit.kind === "essay" ? "Essay section" : unit.kind === "vocabulary" ? "Word / concept" : "Language tool"}</small><strong>${escapeHtml(item.term)}</strong></div><div class="hint"><small>${unit.kind === "essay" ? "Position" : "Part of speech / type"}</small><strong>${escapeHtml(item.pos)}</strong></div><div class="hint"><small>${unit.kind === "essay" ? "Purpose of this sentence" : "Definition / 中文提示"}</small><strong>${escapeHtml(item.definition || "—")}</strong></div></div>
         ${unit.kind === "essay" ? `<p class="section-focus"><strong>Section focus:</strong> ${escapeHtml(item.focus || "")}</p>` : ""}
-        <div class="listen-row"><button id="listen" class="button" type="button">🔊 Listen</button><span><strong>${wordCount} words</strong> · replay as many times as needed</span></div>
-        <div class="word-hints" aria-label="First-letter hints">${wordHints(item.prompt)}</div>
-        <label for="dictation"><strong>${unit.kind === "essay" ? "Type the complete essay sentence" : "Type the complete phrase or sentence"}</strong></label><textarea id="dictation" autocomplete="off" autocapitalize="sentences" spellcheck="false" placeholder="Write all ${wordCount} words before checking."></textarea>
+        <div class="listen-row"><button id="listen" class="button" type="button">🔊 Listen</button><span><strong>${cloze.count} focus-word blanks</strong> · ${wordCount} words in the full sentence</span></div>
+        <p class="blank-note">Fill the selected <strong>action verbs, theme nouns, and adjectives</strong>. Names, dates, and years are already shown. Every blank includes its first letter.</p>
+        <div id="clozeSentence" class="cloze-sentence" aria-label="Sentence with ${cloze.count} blanks">${cloze.html}</div>
         <div id="typingFeedback" class="feedback" role="status"></div>
-        <div id="answerKey" class="answer-key" hidden aria-live="polite"><small>Answer key — correct the sentence from memory</small><div>${escapeHtml(item.prompt)}</div></div>
-        <button id="check" class="button" type="button">Check dictation</button>
+        <div id="answerKey" class="answer-key" hidden aria-live="polite"><small>Completed sentence — correct the blanks from memory</small><div>${escapeHtml(item.prompt)}</div></div>
+        <button id="check" class="button" type="button">Check the blanks</button>
         <section id="speechBox" class="speech-box" hidden><h2>Now read it aloud</h2><p>Listen once more if needed, then use a current version of Chrome or Edge and allow microphone access.</p><div class="listen-row"><button id="speakListen" class="button secondary" type="button">🔊 Hear sentence</button><button id="record" class="button success" type="button">🎙 Start speaking</button><button id="stop" class="button secondary" type="button" disabled>Stop</button><span id="speechScore" class="score-pill">Best: ${state.speakingBest}%</span></div><label for="transcript"><strong>Speech transcript</strong></label><textarea id="transcript" placeholder="Your recognized speech appears here. You may correct recognition errors before scoring."></textarea><div id="speechFeedback" class="feedback" role="status"></div><button id="scoreSpeech" class="button" type="button">Score transcript</button></section>
         <div class="nav-row"><button id="restart" class="button secondary" type="button">Restart sentence</button><button id="next" class="button" type="button" disabled>${escapeHtml(nextLabel)}</button></div>
       </article>`;
-    bind(item, wordCount);
+    bind(item, cloze.count);
   }
 
-  function bind(item, wordCount) {
+  function bind(item, blankCount) {
     const $ = selector => app.querySelector(selector);
     $("#studentName").addEventListener("input", event => localStorage.setItem("ssaw-student-name", event.target.value.trim()));
     $("#listen").addEventListener("click", () => say(item.prompt));
     $("#speakListen").addEventListener("click", () => say(item.prompt));
     const answerKey = $("#answerKey");
     ["copy","cut","contextmenu","dragstart"].forEach(type => answerKey.addEventListener(type, event => event.preventDefault()));
-    $("#dictation").addEventListener("input", () => { answerKey.hidden = true; $("#typingFeedback").textContent = ""; });
+    const blankInputs = [...app.querySelectorAll(".blank-input")];
+    blankInputs.forEach(input => input.addEventListener("input", () => {
+      answerKey.hidden = true;
+      $("#typingFeedback").textContent = "";
+      input.classList.remove("correct", "incorrect");
+    }));
     $("#check").addEventListener("click", () => {
       const name = $("#studentName").value.trim();
       if (!name) { showFeedback("Enter your name before checking your answer.", "warn", "#typingFeedback"); $("#studentName").focus(); return; }
-      const response = $("#dictation").value;
-      const count = tokens(response).length;
-      if (count < wordCount) { answerKey.hidden = true; showFeedback(`Write all ${wordCount} words first. You currently have ${count}.`, "warn", "#typingFeedback"); return; }
-      const score = similarity(item.prompt, response);
+      const completed = blankInputs.filter(input => normalizeWord(input.value)).length;
+      if (completed < blankCount) { answerKey.hidden = true; showFeedback(`Fill all ${blankCount} blanks before checking. You have completed ${completed}.`, "warn", "#typingFeedback"); return; }
+      let correct = 0;
+      blankInputs.forEach(input => {
+        const matches = normalizeWord(input.value) === input.dataset.answer;
+        input.classList.toggle("correct", matches);
+        input.classList.toggle("incorrect", !matches);
+        if (matches) correct += 1;
+      });
+      const score = Math.round((correct / Math.max(blankCount, 1)) * 100);
       if (!state.typingCaptured) { state.typingScores[state.index] = score; state.typingCaptured = true; save(false); }
       if (score === 100) {
         answerKey.hidden = true;
-        showFeedback("Dictation complete. Now read the sentence aloud.", "good", "#typingFeedback");
+        showFeedback("All focus words are correct. Now read the complete sentence aloud.", "good", "#typingFeedback");
         $("#speechBox").hidden = false; $("#dictationStep").className = "step complete"; $("#speakingStep").className = "step active"; $("#transcript").value = ""; $("#speechBox").scrollIntoView({behavior:"smooth",block:"nearest"});
       } else {
         answerKey.hidden = false;
-        showFeedback(`Your word accuracy is ${score}%. Study the answer, then edit your response—the key will disappear while you correct it.`, "error", "#typingFeedback");
+        showFeedback(`${correct} of ${blankCount} focus words are correct (${score}%). Study the completed sentence, then edit a blank—the answer will disappear.`, "error", "#typingFeedback");
       }
     });
     $("#record").addEventListener("click", () => startRecognition(item));
