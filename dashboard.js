@@ -17,7 +17,7 @@
       const percent = saved.completed ? 100 : Math.round(((saved.itemIndex || 0) / unit.items.length) * 100);
       return `<a class="quiz-card" href="${unit.slug}.html" data-search="${[unit.code, unit.title, unit.section, ...unit.items.map(i => `${i.term} ${i.definition}`)].join(" ").toLowerCase()}">
         <div class="card-top"><span class="unit-code">${unit.code}</span><span class="status ${saved.completed ? "done" : ""}">${done}</span></div>
-        <h3>${unit.title}</h3><p>${unit.items.length} listen → dictate → speak prompts</p>
+        <h3>${unit.title}</h3><p>${unit.items.length} listen → fill focus words → speak prompts</p>
         <div class="progress-track"><span style="width:${percent}%"></span></div><strong>Open practice →</strong>
       </a>`;
     }).join("");
