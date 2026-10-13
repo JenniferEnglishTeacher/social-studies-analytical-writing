@@ -6,7 +6,7 @@
   nameInput.addEventListener("input", () => localStorage.setItem("ssaw-student-name", nameInput.value.trim()));
 
   const completed = units.filter(unit => progress[unit.code]?.completed).length;
-  document.querySelector("#stats").innerHTML = `<span class="stat">${units.length} practice units</span><span class="stat">${units.reduce((n,u)=>n+u.items.length,0)} listening prompts</span><span class="stat">${completed} completed</span>`;
+  document.querySelector("#stats").innerHTML = `<span class="stat">${units.length} practice ${units.length === 1 ? "unit" : "units"}</span><span class="stat">${units.reduce((n,u)=>n+u.items.length,0)} listening prompts</span><span class="stat">${completed} completed</span>`;
   const sections = [...new Set(units.map(unit => unit.section))];
   document.querySelector("#jump").innerHTML = sections.map((section, index) => `<a href="#section-${index + 1}">${section.replace(/^Part \d+ · /, "")}</a>`).join("");
   const dashboard = document.querySelector("#dashboard");
@@ -31,3 +31,4 @@
     document.querySelectorAll("[data-section]").forEach(section => section.hidden = !section.querySelector(".quiz-card:not([hidden])"));
   });
 })();
+
