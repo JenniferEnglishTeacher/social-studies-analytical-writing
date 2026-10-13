@@ -22,6 +22,11 @@ const forbidden = new Set([
   "azamgarh","baron","benjamin","browne","calcutta","cambridge","chunder","constantinople","curzon","disraeli","dutt","edward",
   "george","hamilton","hassan","india","john","london","macaulay","mirza","nathaniel","nicholas","paul","queen","reuter","romesh",
   "rothschild","russia","russell","seymour","shah","shirazi","sir","tsar","thomas","victoria",
+  "america","asia","britain","burma","cambodia","china","christ","chulalongkorn","cleveland","congress","dole",
+  "eduardo","europe","ferry","france","furnivall","galeano","germany","god","hawaii","honolulu","india","indochina",
+  "indonesia","james","java","jules","liliuokalani","malaya","malaysia","mckinley","mongkut","netherlands","panama",
+  "philippines","portugal","raffles","roosevelt","rusling","saigon","sanford","siam","singapore","somerset","spain",
+  "stamford","states","theodore","uruguay","vietnam",
   "january","february","march","april","may","june","july","august","september","october","november","december"
 ]);
 for (const unit of data?.units || []) {
@@ -53,4 +58,3 @@ const dashboard = fs.readFileSync(path.join(root,"dashboard.html"),"utf8");
 if (!dashboard.includes("dashboard.js")) errors.push("Dashboard script is not linked");
 if (errors.length) { errors.forEach(error => console.error(`- ${error}`)); process.exit(1); }
 console.log(JSON.stringify({dataFiles,units:data.units.length,prompts,focusWordBlanks:blanks,maxBlanksPerSentence:10,pages:data.units.length + 2,focusWordGate:true,speakingGate:60,status:"valid"},null,2));
-
