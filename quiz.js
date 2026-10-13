@@ -63,7 +63,7 @@
       if (remaining > 0) {
         requested.set(match.normalized, remaining - 1);
         blankNumber += 1;
-        const first = match.raw[0].toUpperCase();
+        const first = unit.hintCase === "source" ? match.raw[0] : match.raw[0].toUpperCase();
         html += `<label class="cloze-blank"><span class="sr-only">Blank ${blankNumber}, ${match.raw.length} letters, begins with ${escapeHtml(first)}</span><input class="blank-input" data-answer="${escapeHtml(match.normalized)}" aria-label="Blank ${blankNumber}: ${match.raw.length} letters, begins with ${escapeHtml(first)}" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="${match.raw.length + 3}" placeholder="${escapeHtml(first)}…" style="--letters:${Math.max(4, Math.min(match.raw.length, 14))}"></label>`;
       } else html += escapeHtml(match.raw);
       cursor = match.end;
