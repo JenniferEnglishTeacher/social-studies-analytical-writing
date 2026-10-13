@@ -6,8 +6,9 @@ Open `dashboard.html` on GitHub Pages. For local microphone testing, double-clic
 
 ## Results
 
-The site submits six fields matching the connected Google Sheet headers: `timeDate`, `studentName`, `unitNumber`, `subquiznumber`, `accuracyRateForTyping`, and `accuracyRateForPronunciation`. Deploy `google-apps-script/Code.gs` as a Google Apps Script web app and paste its `/exec` URL into `config.js`.
+The site submits six fields matching the connected Google Sheet headers: `timeDate`, `studentName`, `unitNumber`, `subquiznumber`, `accuracyRateForTyping`, and `accuracyRateForPronunciation`. The deployed Apps Script `/exec` endpoint is configured in `config.js`; `google-apps-script/Code.gs` contains the collector source.
 
 ## Rebuild content
 
 Run `node tools/build-site.mjs <path-to-Module17_3-4_Writing_Toolkit_Words_and_Patterns.md>` after changing the source handout. This regenerates `data.js`, the individual quiz pages, and `quiz-manifest.tsv`.
+
