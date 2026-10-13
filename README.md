@@ -1,6 +1,6 @@
 # Social Studies Analytical Writing Lab
 
-Interactive complete-essay practice for EFL social-studies students. The current dashboard prototype contains `17-3 source 1`, divided into Introduction, Body 1, Body 2, Body 3, and Conclusion. Every sentence follows the same mastery loop: listen, dictate every word using first-letter hints, correct the response, then read it aloud with at least 60% speech-recognition accuracy.
+Interactive complete-essay practice for EFL social-studies students. The current dashboard prototype contains `17-3 source 1`, divided into Introduction, Body 1, Body 2, Body 3, and Conclusion. Every sentence follows the same mastery loop: listen, complete up to ten selected action verbs, theme nouns, and adjectives using first-letter hints, correct the blanks, then read the complete sentence aloud with at least 60% speech-recognition accuracy. Proper names, dates, and years remain visible.
 
 Open `dashboard.html` on GitHub Pages. For local microphone testing, double-click `Start Website.cmd`; current Chrome or Edge is recommended.
 
