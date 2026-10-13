@@ -47,11 +47,17 @@
     state.typingCaptured = state.typingScores[state.index] !== undefined;
     state.speakingBest = state.speakingScores[state.index] || 0;
     const wordCount = tokens(item.prompt).length;
+    const currentSection = item.essaySection || unit.section;
+    const sectionSentence = item.sectionSentence || state.index + 1;
+    const sectionCount = item.sectionCount || unit.items.length;
+    const nextItem = unit.items[state.index + 1];
+    const nextLabel = state.index === unit.items.length - 1 ? "Finish essay" : nextItem?.essaySection && nextItem.essaySection !== currentSection ? `Next section: ${nextItem.essaySection} →` : "Next sentence →";
     app.className = "quiz-shell";
     app.innerHTML = `<header class="quiz-header"><div><a class="back" href="dashboard.html">← Dashboard</a><p class="eyebrow">${escapeHtml(unit.section)} · ${unit.code}</p><h1>${escapeHtml(unit.title)}</h1><div class="quiz-meta">Listen, type every word, then read the completed phrase aloud.</div></div><div class="student-bar"><label for="studentName">Name</label><input id="studentName" autocomplete="name" value="${escapeHtml(localStorage.getItem("ssaw-student-name") || "")}" placeholder="Required"></div></header>
-      <section class="progress-panel"><div class="progress-row"><span>Prompt ${state.index + 1} of ${unit.items.length}</span><span>${Math.round((state.index / unit.items.length) * 100)}%</span></div><div class="progress-track"><span style="width:${(state.index / unit.items.length) * 100}%"></span></div><div class="stepper"><div id="dictationStep" class="step active">1 · Listen & dictate</div><div id="speakingStep" class="step">2 · Read aloud ≥ ${config.minimumSpeakingScore || 60}%</div></div></section>
+      <section class="progress-panel"><div class="progress-row"><span>${escapeHtml(currentSection)} · Sentence ${sectionSentence} of ${sectionCount}</span><span>Essay ${state.index + 1}/${unit.items.length}</span></div><div class="progress-track"><span style="width:${(state.index / unit.items.length) * 100}%"></span></div><div class="stepper"><div id="dictationStep" class="step active">1 · Listen & dictate</div><div id="speakingStep" class="step">2 · Read aloud ≥ ${config.minimumSpeakingScore || 60}%</div></div></section>
       <article class="prompt-card">
-        <div class="hint-grid"><div class="hint"><small>${unit.kind === "vocabulary" ? "Word / concept" : "Language tool"}</small><strong>${escapeHtml(item.term)}</strong></div><div class="hint"><small>Part of speech / type</small><strong>${escapeHtml(item.pos)}</strong></div><div class="hint"><small>Definition / 中文提示</small><strong>${escapeHtml(item.definition || "—")}</strong></div></div>
+        <div class="hint-grid"><div class="hint"><small>${unit.kind === "essay" ? "Essay section" : unit.kind === "vocabulary" ? "Word / concept" : "Language tool"}</small><strong>${escapeHtml(item.term)}</strong></div><div class="hint"><small>${unit.kind === "essay" ? "Position" : "Part of speech / type"}</small><strong>${escapeHtml(item.pos)}</strong></div><div class="hint"><small>${unit.kind === "essay" ? "Purpose of this sentence" : "Definition / 中文提示"}</small><strong>${escapeHtml(item.definition || "—")}</strong></div></div>
+        ${unit.kind === "essay" ? `<p class="section-focus"><strong>Section focus:</strong> ${escapeHtml(item.focus || "")}</p>` : ""}
         <div class="listen-row"><button id="listen" class="button" type="button">🔊 Listen</button><span><strong>${wordCount} words</strong> · replay as many times as needed</span></div>
         <div class="word-hints" aria-label="First-letter hints">${wordHints(item.prompt)}</div>
         <label for="dictation"><strong>Type the complete phrase or sentence</strong></label><textarea id="dictation" autocomplete="off" autocapitalize="sentences" spellcheck="false" placeholder="Write all ${wordCount} words before checking."></textarea>
@@ -59,7 +65,7 @@
         <div id="answerKey" class="answer-key" hidden aria-live="polite"><small>Answer key — correct the sentence from memory</small><div>${escapeHtml(item.prompt)}</div></div>
         <button id="check" class="button" type="button">Check dictation</button>
         <section id="speechBox" class="speech-box" hidden><h2>Now read it aloud</h2><p>Listen once more if needed, then use a current version of Chrome or Edge and allow microphone access.</p><div class="listen-row"><button id="speakListen" class="button secondary" type="button">🔊 Hear sentence</button><button id="record" class="button success" type="button">🎙 Start speaking</button><button id="stop" class="button secondary" type="button" disabled>Stop</button><span id="speechScore" class="score-pill">Best: ${state.speakingBest}%</span></div><label for="transcript"><strong>Speech transcript</strong></label><textarea id="transcript" placeholder="Your recognized speech appears here. You may correct recognition errors before scoring."></textarea><div id="speechFeedback" class="feedback" role="status"></div><button id="scoreSpeech" class="button" type="button">Score transcript</button></section>
-        <div class="nav-row"><button id="restart" class="button secondary" type="button">Restart prompt</button><button id="next" class="button" type="button" disabled>${state.index === unit.items.length - 1 ? "Finish quiz" : "Next prompt →"}</button></div>
+        <div class="nav-row"><button id="restart" class="button secondary" type="button">Restart sentence</button><button id="next" class="button" type="button" disabled>${escapeHtml(nextLabel)}</button></div>
       </article>`;
     bind(item, wordCount);
   }
@@ -174,8 +180,8 @@
     const payload = {
       timeDate: new Date().toLocaleString("en-CA", {timeZone:"Asia/Taipei", hour12:false}),
       studentName: localStorage.getItem("ssaw-student-name") || "",
-      unitNumber: "Module17-3-4",
-      subquiznumber: `${unit.code} · ${unit.title}`,
+      unitNumber: unit.module || "Module17-3-4",
+      subquiznumber: unit.title,
       accuracyRateForTyping: average(state.typingScores),
       accuracyRateForPronunciation: average(state.speakingScores)
     };
@@ -196,3 +202,4 @@
   }
   render();
 })();
+
